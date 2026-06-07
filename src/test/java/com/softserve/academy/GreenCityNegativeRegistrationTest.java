@@ -2,12 +2,19 @@ package com.softserve.academy;
 
 import io.github.bonigarcia.wdm.WebDriverManager;
 import org.junit.jupiter.api.*;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.EmptySource;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 
 import org.openqa.selenium.chrome.ChromeOptions;
+
 import java.time.Duration;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -25,7 +32,7 @@ class GreenCityNegativeRegistrationTest {
             options.addArguments("--disable-dev-shm-usage");
             options.addArguments("--window-size=1920,1080");
         }
-        
+
         driver = WebDriverManager.chromedriver().capabilities(options).create();
         driver.manage().window().maximize();
         // At this stage, we are not using complex waits, so we just maximize the window
@@ -35,7 +42,7 @@ class GreenCityNegativeRegistrationTest {
     void openRegistrationForm() throws InterruptedException {
         // 1. Open the main page
         driver.navigate().to("https://www.greencity.cx.ua/#/greenCity");
-        
+
         // Bad practice: using a delay to allow the page to load completely.
         // This is necessary because the site may load slowly.
         Thread.sleep(5000);
@@ -67,6 +74,45 @@ class GreenCityNegativeRegistrationTest {
         assertSignUpButtonDisabled();
     }
 
+    @ParameterizedTest(name = "Invalid email test using ValueSource [{index}]: email = ''{0}''")
+    @ValueSource(strings = {"plainaddress", "#@%^%#$@#$@#.com", "@gmail.com", "Joe Smith <email@gmail.com>", "email123.gmail.com", "email123@gmail@com"})
+    void shouldShowErrorForInvalidEmail(String email) {
+        typeEmail(email);
+        typeUsername("user");
+        typePassword("ValidPass123!");
+        typeConfirm("ValidPass123!");
+
+        assertFalse(isValidEmail(email));
+        assertEmailErrorVisible();
+        assertSignUpButtonDisabled();
+    }
+
+    private static Stream<Arguments> invalidEmail() {
+        return Stream.of(
+                Arguments.of("", true),
+                Arguments.of("plainaddress", false),
+                Arguments.of("#@%^%#$@#$@#.com", false),
+                Arguments.of("@gmail.com", false),
+                Arguments.of("Joe Smith <email@gmail.com>", false),
+                Arguments.of("email123.gmail.com", false),
+                Arguments.of("email123@gmail@com", false)
+        );
+    }
+
+    @ParameterizedTest(name = "Invalid email test using MethodSource [{index}]: email = ''{0}''")
+    @MethodSource("invalidEmail")
+    void shouldShowErrorForInvalidEmail(String email, boolean singleClick) {
+        if (singleClick) {
+            driver.findElement(By.id("email")).click();
+        } else typeEmail(email);
+        typeUsername("user");
+        typePassword("ValidPass123!");
+        typeConfirm("ValidPass123!");
+
+        assertEmailErrorVisible();
+        assertSignUpButtonDisabled();
+    }
+
     @Test
     @DisplayName("All fields empty → required errors shown")
     void shouldShowErrorsForAllEmptyFields() throws InterruptedException {
@@ -85,23 +131,25 @@ class GreenCityNegativeRegistrationTest {
     }
 
     @Test
-    @DisplayName("Short password (<8) → password rule error")
-    void shouldShowErrorForShortPassword() throws InterruptedException {
-        // TODO:
-        // Enter a password like "123" and check for the error
-    }
-
-    @Test
-    @DisplayName("Password with space → password rule error")
-    void shouldShowErrorForPasswordWithSpace() throws InterruptedException {
-        // Check a specific password validation rule
-    }
-
-    @Test
     @DisplayName("Confirm password mismatch → confirm error")
     void shouldShowErrorForPasswordMismatch() throws InterruptedException {
         // Enter different passwords in the Password and Confirm Password fields
     }
+
+    @ParameterizedTest(name = "Invalid password test [{index}]: password = ''{0}''")
+    @EmptySource
+    @ValueSource(strings = {"Pa123!@", "Valid Pass123!", " ", "12345678"})
+    void shouldShowErrorForInvalidPassword(String password) {
+
+        typePassword(password);
+        typeConfirm(password);
+        typeEmail("some3456@gmail.com");
+        typeUsername("user name");
+
+        assertFalse(isValidPassword(password));
+        assertPasswordErrorVisible();
+    }
+
 
     // --- HELPERS (Helper methods) ---
     // This is the first step towards structuring code before learning Page Object
@@ -134,11 +182,24 @@ class GreenCityNegativeRegistrationTest {
         driver.findElement(By.cssSelector("button[type='submit'].greenStyle")).click();
     }
 
+    public static boolean isValidPassword(String password) {
+        String passwordPattern = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$_\\-!%*#?&])[A-Za-z\\d@$_\\-!%*#?&]{8,}$";
+        return password.matches(passwordPattern);
+    }
+
+    public static boolean isValidEmail(String email) {
+        String emailPattern = "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$";
+        return email.matches(emailPattern);
+    }
+
     private void assertEmailErrorVisible() {
         WebElement error = driver.findElement(By.id("email-err-msg"));
         assertTrue(error.isDisplayed(), "Email error message should be visible");
         // contains("required") or other text to avoid dependency on the full phrase
-        assertTrue(error.getText().toLowerCase().contains("check") || error.getText().toLowerCase().contains("correctly"));
+        assertTrue(error.getText().toLowerCase().contains("check")
+                || error.getText().toLowerCase().contains("correctly")
+                || error.getText().toLowerCase().contains("required")
+        );
     }
 
     private void assertUsernameErrorVisible() {
@@ -149,6 +210,16 @@ class GreenCityNegativeRegistrationTest {
     private void assertSignUpButtonDisabled() {
         WebElement btn = driver.findElement(By.cssSelector("button[type='submit'].greenStyle"));
         assertFalse(btn.isEnabled(), "The 'Sign Up' button should be disabled with invalid data");
+    }
+
+    private void assertPasswordErrorVisible() {
+        WebElement error = driver.findElement(By.className("password-not-valid"));
+        assertTrue(error.isDisplayed(), "Password error message should be highlighted");
+    }
+
+    private void assertConfirmPasswordErrorVisible() {
+        WebElement error = driver.findElement(By.id("confirm-err-msg"));
+        assertTrue(error.isDisplayed(), "Confirm password error message should be visible");
     }
 
     @AfterAll
