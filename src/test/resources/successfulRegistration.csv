@@ -1,0 +1,3 @@
+testScenario, username, password, confirmPassword
+valid registration #1, user1, Pass#1234, Pass#1234
+valid registration #2, user1, Pass#1234, Pass#1234

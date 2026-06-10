@@ -3,10 +3,7 @@ package com.softserve.academy;
 import io.github.bonigarcia.wdm.WebDriverManager;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.EmptySource;
-import org.junit.jupiter.params.provider.MethodSource;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.*;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
@@ -99,6 +96,45 @@ class GreenCityNegativeRegistrationTest {
         );
     }
 
+    @ParameterizedTest(name = "{0}")
+    @CsvFileSource(resources = "/successfulRegistration.csv", numLinesToSkip = 1, delimiter = ',')
+    @DisplayName("Successful registration by use of csv file")
+    void successfulRegistrationFromCsvFile(String scenario, String username, String password, String repeatPassword) throws InterruptedException {
+        fillRegistrationForm(generateUniqueEmail(), username, password, repeatPassword);
+        Thread.sleep(2000);
+        clickSignUpButton();
+        Thread.sleep(3000);
+        WebElement snackbar = driver.findElement(By.cssSelector(".mdc-snackbar__label"));
+        assertTrue(snackbar.isDisplayed(), "Snackbar should be displayed after successful registration");
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @CsvFileSource(resources = "/invalidEmailNegativeRegistration.csv", numLinesToSkip = 1, delimiter = ',')
+    @DisplayName("Negative registration with invalid email using csv file")
+    void negativeRegistrationFromCsvFile(String scenario, String email, String username, String password, String repeatPassword) throws InterruptedException {
+        fillRegistrationForm(email, username, password, repeatPassword);
+
+        Thread.sleep(2000);
+        clickSignUpButton();
+
+        Thread.sleep(3000);
+        assertEmailErrorVisible();
+        assertSignUpButtonDisabled();
+        assertIncorrectEmailErrorVisible();
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @CsvFileSource(resources = "/invalidUserNameRegistration.csv", numLinesToSkip = 1, delimiter = ',')
+    @DisplayName("Registration with invalid userName using csv file")
+    void registrationWithInvalidUsername(String scenario, String username, String password, String repeatPassword) throws InterruptedException {
+        fillRegistrationForm(generateUniqueEmail(), username, password, repeatPassword);
+        Thread.sleep(2000);
+
+        clickSignUpButton();
+        assertSignUpButtonDisabled();
+        assertUsernameErrorVisible();
+    }
+
     @ParameterizedTest(name = "Invalid email test using MethodSource [{index}]: email = ''{0}''")
     @MethodSource("invalidEmail")
     void shouldShowErrorForInvalidEmail(String email, boolean singleClick) {
@@ -108,32 +144,11 @@ class GreenCityNegativeRegistrationTest {
         typeUsername("user");
         typePassword("ValidPass123!");
         typeConfirm("ValidPass123!");
+        clickSignUpButton();
 
+        assertFalse(isValidEmail(email));
         assertEmailErrorVisible();
         assertSignUpButtonDisabled();
-    }
-
-    @Test
-    @DisplayName("All fields empty → required errors shown")
-    void shouldShowErrorsForAllEmptyFields() throws InterruptedException {
-        // TODO:
-        // 1. Click each field or try to click Sign Up
-        // 2. Check assertEmailErrorVisible(), assertUsernameErrorVisible(), etc.
-    }
-
-    @Test
-    @DisplayName("Empty username → username required")
-    void shouldShowErrorForEmptyUsername() throws InterruptedException {
-        // TODO:
-        // 1. Enter valid email and passwords
-        // 2. Leave username empty (or click and leave)
-        // 3. assertUsernameErrorVisible()
-    }
-
-    @Test
-    @DisplayName("Confirm password mismatch → confirm error")
-    void shouldShowErrorForPasswordMismatch() throws InterruptedException {
-        // Enter different passwords in the Password and Confirm Password fields
     }
 
     @ParameterizedTest(name = "Invalid password test [{index}]: password = ''{0}''")
@@ -145,11 +160,24 @@ class GreenCityNegativeRegistrationTest {
         typeConfirm(password);
         typeEmail("some3456@gmail.com");
         typeUsername("user name");
+        clickSignUpButton();
 
         assertFalse(isValidPassword(password));
         assertPasswordErrorVisible();
+        assertSignUpButtonDisabled();
     }
 
+    @ParameterizedTest(name = "{0}")
+    @CsvFileSource(resources = "/invalidConfirmPasswordRegistration.csv")
+    @DisplayName("Registration with incorrect Confirm Password")
+    void registrationWithIncorrectConfirmPassword(String scenario, String username, String password, String repeatPassword) throws InterruptedException {
+        fillRegistrationForm(generateUniqueEmail(), username, password, repeatPassword);
+
+        Thread.sleep(2000);
+        clickSignUpButton();
+        assertConfirmPasswordErrorVisible();
+        assertSignUpButtonDisabled();
+    }
 
     // --- HELPERS (Helper methods) ---
     // This is the first step towards structuring code before learning Page Object
@@ -178,8 +206,15 @@ class GreenCityNegativeRegistrationTest {
         field.sendKeys(value);
     }
 
-    private void clickSignUp() {
+    private void clickSignUpButton() {
         driver.findElement(By.cssSelector("button[type='submit'].greenStyle")).click();
+    }
+
+    private void fillRegistrationForm(String email, String username, String password, String repeatPassword) {
+        typeEmail(email);
+        typeUsername(username);
+        typePassword(password);
+        typeConfirm(repeatPassword);
     }
 
     public static boolean isValidPassword(String password) {
@@ -192,6 +227,16 @@ class GreenCityNegativeRegistrationTest {
         return email.matches(emailPattern);
     }
 
+    private static String generateUniqueEmail() {
+        String chars = "qwertyuiopasdfghjklzxcvbnm0123456789";
+        StringBuilder email = new StringBuilder();
+        for (int i = 0; i < 10; i++) {
+            email.append(chars.charAt((int) (Math.random() * chars.length())));
+        }
+        email.append("@gmail.com");
+        return email.toString();
+    }
+
     private void assertEmailErrorVisible() {
         WebElement error = driver.findElement(By.id("email-err-msg"));
         assertTrue(error.isDisplayed(), "Email error message should be visible");
@@ -202,9 +247,16 @@ class GreenCityNegativeRegistrationTest {
         );
     }
 
+    private void assertIncorrectEmailErrorVisible() {
+        WebElement error = driver.findElement(By.id("email-err-msg"));
+        assertTrue(error.isDisplayed(), "Incorrect email error message should be visible");
+        assertTrue(error.getText().toLowerCase().contains("please check that your e-mail address is indicated correctly"));
+    }
+
     private void assertUsernameErrorVisible() {
-        // Find the error element for the username (id may differ, check on the site)
-        // For example: driver.findElement(By.xpath("//input[@id='firstName']/following-sibling::div"))
+        WebElement error = driver.findElement(By.id("firstname-err-msg"));
+        assertTrue(error.isDisplayed(), "Username error message should be visible");
+        assertTrue(error.getText().toLowerCase().contains("the user name must be 1-30 characters long and may include letters, numbers, single dots, hyphens, or apostrophes. dots cannot appear at the beginning or end, nor can they be consecutive. double hyphens or apostrophes are also not allowed."));
     }
 
     private void assertSignUpButtonDisabled() {
@@ -220,6 +272,7 @@ class GreenCityNegativeRegistrationTest {
     private void assertConfirmPasswordErrorVisible() {
         WebElement error = driver.findElement(By.id("confirm-err-msg"));
         assertTrue(error.isDisplayed(), "Confirm password error message should be visible");
+        assertTrue(error.getText().toLowerCase().contains("passwords do not match"));
     }
 
     @AfterAll
