@@ -5,12 +5,16 @@ import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.*;
 import org.openqa.selenium.By;
+import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
+import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.WebDriverWait;
+
+import java.time.Duration;
 
 import org.openqa.selenium.chrome.ChromeOptions;
 
-import java.time.Duration;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -36,34 +40,28 @@ class GreenCityNegativeRegistrationTest {
     }
 
     @BeforeEach
-    void openRegistrationForm() throws InterruptedException {
+    void openRegistrationForm() {
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
         // 1. Open the main page
         driver.navigate().to("https://www.greencity.cx.ua/#/greenCity");
 
-        // Bad practice: using a delay to allow the page to load completely.
-        // This is necessary because the site may load slowly.
-        Thread.sleep(5000);
-
         // 2. Click the "Sign Up" button to open the modal window
-        driver.findElement(By.cssSelector(".header_sign-up-btn > span")).click();
-
-        // Bad practice: using a delay to allow the modal window to open.
-        Thread.sleep(2000);
+        WebElement signUpButton = wait.until(ExpectedConditions
+                .elementToBeClickable(By.cssSelector(".header_sign-up-btn > span")));
+        signUpButton.click();
+        wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("email")));
     }
 
     // --- TESTS ---
 
     @Test
     @DisplayName("Invalid email format (without @) → email error")
-    void shouldShowErrorForInvalidEmail() throws InterruptedException {
+    void shouldShowErrorForInvalidEmail() {
         // One test = one reason for failure. Other fields must be valid.
         typeEmail("invalid-email");
         typeUsername("ValidUsername");
         typePassword("ValidPass123!");
         typeConfirm("ValidPass123!");
-
-        // Give the system some time to validate and display the error
-        Thread.sleep(1000);
 
         // Check that the error for email appeared
         assertEmailErrorVisible();
@@ -99,25 +97,22 @@ class GreenCityNegativeRegistrationTest {
     @ParameterizedTest(name = "{0}")
     @CsvFileSource(resources = "/successfulRegistration.csv", numLinesToSkip = 1, delimiter = ',')
     @DisplayName("Successful registration by use of csv file")
-    void successfulRegistrationFromCsvFile(String scenario, String username, String password, String repeatPassword) throws InterruptedException {
+    void successfulRegistrationFromCsvFile(String scenario, String username, String password, String repeatPassword) {
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
         fillRegistrationForm(generateUniqueEmail(), username, password, repeatPassword);
-        Thread.sleep(2000);
         clickSignUpButton();
-        Thread.sleep(3000);
-        WebElement snackbar = driver.findElement(By.cssSelector(".mdc-snackbar__label"));
+        WebElement snackbar = wait.until(ExpectedConditions.visibilityOfElementLocated(By.cssSelector(".mdc-snackbar__label")));
+
         assertTrue(snackbar.isDisplayed(), "Snackbar should be displayed after successful registration");
     }
 
     @ParameterizedTest(name = "{0}")
     @CsvFileSource(resources = "/invalidEmailNegativeRegistration.csv", numLinesToSkip = 1, delimiter = ',')
     @DisplayName("Negative registration with invalid email using csv file")
-    void negativeRegistrationFromCsvFile(String scenario, String email, String username, String password, String repeatPassword) throws InterruptedException {
+    void negativeRegistrationFromCsvFile(String scenario, String email, String username, String password, String repeatPassword) {
         fillRegistrationForm(email, username, password, repeatPassword);
-
-        Thread.sleep(2000);
         clickSignUpButton();
 
-        Thread.sleep(3000);
         assertEmailErrorVisible();
         assertSignUpButtonDisabled();
         assertIncorrectEmailErrorVisible();
@@ -126,11 +121,10 @@ class GreenCityNegativeRegistrationTest {
     @ParameterizedTest(name = "{0}")
     @CsvFileSource(resources = "/invalidUserNameRegistration.csv", numLinesToSkip = 1, delimiter = ',')
     @DisplayName("Registration with invalid userName using csv file")
-    void registrationWithInvalidUsername(String scenario, String username, String password, String repeatPassword) throws InterruptedException {
+    void registrationWithInvalidUsername(String scenario, String username, String password, String repeatPassword) {
         fillRegistrationForm(generateUniqueEmail(), username, password, repeatPassword);
-        Thread.sleep(2000);
-
         clickSignUpButton();
+
         assertSignUpButtonDisabled();
         assertUsernameErrorVisible();
     }
@@ -170,11 +164,10 @@ class GreenCityNegativeRegistrationTest {
     @ParameterizedTest(name = "{0}")
     @CsvFileSource(resources = "/invalidConfirmPasswordRegistration.csv")
     @DisplayName("Registration with incorrect Confirm Password")
-    void registrationWithIncorrectConfirmPassword(String scenario, String username, String password, String repeatPassword) throws InterruptedException {
+    void registrationWithIncorrectConfirmPassword(String scenario, String username, String password, String repeatPassword){
         fillRegistrationForm(generateUniqueEmail(), username, password, repeatPassword);
-
-        Thread.sleep(2000);
         clickSignUpButton();
+
         assertConfirmPasswordErrorVisible();
         assertSignUpButtonDisabled();
     }
@@ -207,7 +200,11 @@ class GreenCityNegativeRegistrationTest {
     }
 
     private void clickSignUpButton() {
-        driver.findElement(By.cssSelector("button[type='submit'].greenStyle")).click();
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        WebElement btn = wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("button[type='submit'].greenStyle")));
+
+        JavascriptExecutor js = (JavascriptExecutor) driver;
+        js.executeScript("arguments[0].click();", btn);
     }
 
     private void fillRegistrationForm(String email, String username, String password, String repeatPassword) {
@@ -238,7 +235,8 @@ class GreenCityNegativeRegistrationTest {
     }
 
     private void assertEmailErrorVisible() {
-        WebElement error = driver.findElement(By.id("email-err-msg"));
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        WebElement error = wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("email-err-msg")));
         assertTrue(error.isDisplayed(), "Email error message should be visible");
         // contains("required") or other text to avoid dependency on the full phrase
         assertTrue(error.getText().toLowerCase().contains("check")
@@ -248,29 +246,35 @@ class GreenCityNegativeRegistrationTest {
     }
 
     private void assertIncorrectEmailErrorVisible() {
-        WebElement error = driver.findElement(By.id("email-err-msg"));
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        WebElement error = wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("email-err-msg")));
         assertTrue(error.isDisplayed(), "Incorrect email error message should be visible");
         assertTrue(error.getText().toLowerCase().contains("please check that your e-mail address is indicated correctly"));
     }
 
     private void assertUsernameErrorVisible() {
-        WebElement error = driver.findElement(By.id("firstname-err-msg"));
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        WebElement error = wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("firstname-err-msg")));
         assertTrue(error.isDisplayed(), "Username error message should be visible");
         assertTrue(error.getText().toLowerCase().contains("the user name must be 1-30 characters long and may include letters, numbers, single dots, hyphens, or apostrophes. dots cannot appear at the beginning or end, nor can they be consecutive. double hyphens or apostrophes are also not allowed."));
     }
 
     private void assertSignUpButtonDisabled() {
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
         WebElement btn = driver.findElement(By.cssSelector("button[type='submit'].greenStyle"));
+        wait.until(ExpectedConditions.not(ExpectedConditions.elementToBeClickable(btn)));
         assertFalse(btn.isEnabled(), "The 'Sign Up' button should be disabled with invalid data");
     }
 
     private void assertPasswordErrorVisible() {
-        WebElement error = driver.findElement(By.className("password-not-valid"));
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        WebElement error = wait.until(ExpectedConditions.visibilityOfElementLocated(By.className("password-not-valid")));
         assertTrue(error.isDisplayed(), "Password error message should be highlighted");
     }
 
     private void assertConfirmPasswordErrorVisible() {
-        WebElement error = driver.findElement(By.id("confirm-err-msg"));
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        WebElement error = wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("confirm-err-msg")));
         assertTrue(error.isDisplayed(), "Confirm password error message should be visible");
         assertTrue(error.getText().toLowerCase().contains("passwords do not match"));
     }
