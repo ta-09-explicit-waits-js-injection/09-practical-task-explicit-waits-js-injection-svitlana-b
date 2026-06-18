@@ -1,0 +1,7 @@
+testScenario,username,password,confirmPassword
+1: 31 chars in userName,aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa1,Pass#1234,Pass#1234
+2: '.' at the beginning in userName,.user1,Pass#1234,Pass#1234
+3: '.' at the end in userName,user.,Pass#1234,Pass#1234
+4: double hyphens in userName,us--er,Pass#1234,Pass#1234
+5: double dots in userName,u..ser,Pass#1234,Pass#1234
+6: double apostrophes in userName,user''name,Pass#1234,Pass#1234

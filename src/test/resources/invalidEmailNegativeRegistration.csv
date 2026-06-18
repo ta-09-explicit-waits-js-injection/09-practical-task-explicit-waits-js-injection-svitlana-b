@@ -1,0 +1,5 @@
+testScenario,email,username,password,repeatPassword
+1: no '@' in email,email.gmail.com,user1,Pass#1234,Pass#1234
+2: no '.' in email,email@gmail@com,user2,Pass#1234,Pass#1234
+3: no '.' before "com" in email,email@gmailcom,user3,Pass#1234,Pass#1234
+4: invalid email,invalid-email,user4,Pass#1234,Pass#1234
