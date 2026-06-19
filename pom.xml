@@ -5,9 +5,9 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.softserve.academy</groupId>
-    <artifactId>07-practical-task-selenium-webdriver</artifactId>
+    <artifactId>09-practical-task-explicit-waits-js-injection</artifactId>
     <version>1.0-SNAPSHOT</version>
-    <name>07-practical-task-selenium-webdriver</name>
+    <name>09-practical-task-explicit-waits-js-injection</name>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>

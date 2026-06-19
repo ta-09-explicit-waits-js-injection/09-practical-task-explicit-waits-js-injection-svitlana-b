@@ -28,6 +28,7 @@ class GreenCityNegativeRegistrationTest {
         ChromeOptions options = new ChromeOptions();
         // Check if we are running in CI (GitHub Actions)
         if (System.getenv("GITHUB_ACTIONS") != null) {
+            options.addArguments("--lang=en");
             options.addArguments("--headless=new");
             options.addArguments("--no-sandbox");
             options.addArguments("--disable-dev-shm-usage");
@@ -39,18 +40,28 @@ class GreenCityNegativeRegistrationTest {
         // At this stage, we are not using complex waits, so we just maximize the window
     }
 
-    @BeforeEach
-    void openRegistrationForm() {
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
-        // 1. Open the main page
-        driver.navigate().to("https://www.greencity.cx.ua/#/greenCity");
-
-        // 2. Click the "Sign Up" button to open the modal window
-        WebElement signUpButton = wait.until(ExpectedConditions
-                .elementToBeClickable(By.cssSelector(".header_sign-up-btn > span")));
-        signUpButton.click();
-        wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("email")));
-    }
+//    @BeforeEach
+//    void openRegistrationForm() {
+//        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+//        // 1. Open the main page
+//        driver.navigate().to("https://www.greencity.cx.ua/#/greenCity");
+//
+//        // 2. Click the "Sign Up" button to open the modal window
+//        WebElement signUpButton = wait.until(ExpectedConditions
+//                .elementToBeClickable(By.cssSelector(".header_sign-up-btn > span")));
+//        signUpButton.click();
+//        wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("email")));
+//    }
+@BeforeEach
+void openRegistrationForm() {
+    WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+    driver.navigate().to("https://www.greencity.cx.ua/#/greenCity");
+    wait.until(ExpectedConditions.invisibilityOfElementLocated(By.className("mat-mdc-snack-bar-container")));
+    WebElement signUpButton = wait.until(ExpectedConditions
+            .elementToBeClickable(By.cssSelector(".header_sign-up-btn > span")));
+    ((JavascriptExecutor) driver).executeScript("arguments[0].click();", signUpButton);
+    wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("email")));
+}
 
     // --- TESTS ---
 
